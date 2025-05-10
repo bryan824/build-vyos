@@ -113,9 +113,7 @@ jobs:
       - name: Build generic ISO image
         id: build_generic_iso
         run: |
-          echo "${{ secrets.minisign_public_key }}" > /tmp/minisign.pub
-          echo "${{ secrets.minisign_private_key }}" > /tmp/minisign.key
-          echo "${{ secrets.minisign_password }}" > /tmp/minisign_password.txt
+
           cd vyos-build
           sudo --preserve-env ./build-vyos-image \
             --architecture amd64 \
@@ -133,9 +131,7 @@ jobs:
           GENERIC_IMAGE_ISO=$(jq --raw-output .artifacts[0] manifest.json)
           echo "generic_image_name=${GENERIC_IMAGE_NAME}" >> $GITHUB_OUTPUT
           echo "generic_image_iso=${GENERIC_IMAGE_ISO}" >> $GITHUB_OUTPUT
-          # Cryptographically sign the image
-          $GITHUB_WORKSPACE/bin/minisign -Vm ${GENERIC_IMAGE_ISO} -x ${GENERIC_IMAGE_ISO}.minisig -p /tmp/minisign.pub
-          rm -f /tmp/minisign.key /tmp/minisign.pub
+
           # Move artifacts to workspace to avoid nested path in artifact archive
           mv manifest.json ${GENERIC_IMAGE_ISO} ${GENERIC_IMAGE_ISO}.minisig $GITHUB_WORKSPACE
 
@@ -314,86 +310,6 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
-  slack:
-    needs:
-      - test_config_load
-      - test_raid1_install
-      - test_smoketest_cli
-      - test_interfaces_cli
-      - test_encrypted_config_tpm
-      - build_generic_iso
-    runs-on: ubuntu-latest
-    if: ${{ failure() && (github.ref == 'refs/heads/current') && !inputs.SKIP_SLACK_NOTIFICATIONS }}
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: logs
-          pattern: smoketest_make_*
-      - name: 'Slack notification: filter Smoketest failed logs'
-        id: filter_smoketest_failed_logs
-        run: |
-          for logfile in $(find logs -type f -name "*.log")
-          do
-              echo $logfile
-              cat $logfile | grep '... FAIL' >> ${{ github.workspace }}/smoketest_filtered.log || true
-              cat $logfile | grep 'ERROR -' >> ${{ github.workspace }}/smoketest_filtered.log || true
-              cat $logfile | grep 'Error:' -A12 >> ${{ github.workspace }}/smoketest_filtered.log || true
-          done
-
-      - name: 'Slack notification: send to channel'
-        id: send_a_slack_failure_notification
-        uses: slackapi/slack-github-action@v1.25.0
-        with:
-          payload: |
-            {
-              "text": "*VyOS nightly build automation did not succeed*",
-              "attachments": [
-                {
-                  "color": "FF6600",
-                  "fields": [
-                    {
-                      "title": "Repository",
-                      "short": true,
-                      "value": "${{ github.repository }}"
-                    },
-                    {
-                      "title": "Workflow",
-                      "short": true,
-                      "value": "${{ github.workflow }}"
-                    },
-                    {
-                      "title": "Trigger",
-                      "short": true,
-                      "value": "${{ github.event_name }}"
-                    },
-                    {
-                      "title": "Run number",
-                      "short": true,
-                      "value": "${{ github.run_number }}"
-                    },
-                    {
-                      "title": "URL",
-                      "short": false,
-                      "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-                    }
-                  ]
-                }
-              ]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
-
-      - name: 'Slack notification: send Smoketest log excerpt'
-        uses: MeilCli/slack-upload-file@v4
-        with:
-          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
-          channel_id: ${{ secrets.SLACK_CHANNEL_ID }}
-          file_type: 'text'
-          file_path: ${{ github.workspace }}/smoketest_filtered.log
-          initial_comment: Smoketest log excerpt
-          if_no_files_found: ignore
-
   publish:
     needs:
       - test_config_load
@@ -507,21 +423,3 @@ jobs:
           files: |
             ${{ needs.build_generic_iso.outputs.generic_image_iso }}
             ${{ needs.build_generic_iso.outputs.generic_image_iso }}.minisig
-
-      - uses: Nats-ji/delete-old-releases@v1.0.1
-        with:
-          token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
-          keep-count: 30
-          keep-old-minor-releases: false
-
-  update_download_page:
-    needs:
-      - publish
-    uses: vyos/community.vyos.net/.github/workflows/main.yml@production
-    with:
-      branch: production
-      aws_amplify_region: ${{ vars.AWS_AMPLIFY_REGION }}
-      aws_amplify_app_id: ${{ vars.AWS_AMPLIFY_APP_ID }}
-    secrets:
-      AWS_AMPLIFY_ACCESS_KEY_ID: ${{ secrets.AWS_AMPLIFY_ACCESS_KEY_ID }}
-      AWS_AMPLIFY_SECRET_ACCESS_KEY: ${{ secrets.AWS_AMPLIFY_SECRET_ACCESS_KEY }}
