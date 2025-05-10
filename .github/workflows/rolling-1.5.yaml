@@ -5,9 +5,6 @@ on:
     branches:
       - main
 
-  schedule:
-    - cron: '0 0 * * *'
-
   workflow_dispatch:
     inputs:
       BUILD_BY:
@@ -55,7 +52,7 @@ env:
 
 jobs:
   build_generic_iso:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     if: github.repository == 'bryan824/build-vyos'
     permissions:
       contents: write
@@ -108,7 +105,7 @@ jobs:
           # Alternative: modify a file with sed
           # sed -i 's/old_pattern/new_pattern/g' path/to/file/to/modify.txt
           cd scripts/package-build/linux-kernel
-          ./build.py
+          ./build.py --config package.toml --packages linux-kernel
           cd ../../../packages
           ln -s ../scripts/package-build/linux-kernel/*.deb ./
           ls -la
@@ -154,7 +151,7 @@ jobs:
 
   test_smoketest_cli:
     needs: build_generic_iso
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     if: ${{ !inputs.SKIP_SMOKETEST_CLI }}
     container:
       image: vyos/vyos-build:current
@@ -187,7 +184,7 @@ jobs:
 
   test_interfaces_cli:
     needs: build_generic_iso
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     if: ${{ !inputs.SKIP_SMOKETEST_CLI }}
     container:
       image: vyos/vyos-build:current
@@ -220,7 +217,7 @@ jobs:
 
   test_config_load:
     needs: build_generic_iso
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     if: ${{ !inputs.SKIP_SMOKETEST_CONFIG }}
     container:
       image: vyos/vyos-build:current
@@ -253,7 +250,7 @@ jobs:
 
   test_raid1_install:
     needs: build_generic_iso
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     if: ${{ !inputs.SKIP_SMOKETEST_RAID1 }}
     container:
       image: vyos/vyos-build:current
@@ -286,7 +283,7 @@ jobs:
 
   test_encrypted_config_tpm:
     needs: build_generic_iso
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     if: ${{ !inputs.SKIP_SMOKETEST_TPM }}
     container:
       image: vyos/vyos-build:current
@@ -325,7 +322,7 @@ jobs:
       - test_interfaces_cli
       - test_encrypted_config_tpm
       - build_generic_iso
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     if: ${{ failure() && (github.ref == 'refs/heads/current') && !inputs.SKIP_SLACK_NOTIFICATIONS }}
     steps:
       - uses: actions/download-artifact@v4
@@ -405,7 +402,7 @@ jobs:
       - test_interfaces_cli
       - test_encrypted_config_tpm
       - build_generic_iso
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     if: github.ref_name == 'current'
