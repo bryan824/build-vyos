@@ -109,7 +109,7 @@ jobs:
           # sed -i 's/old_pattern/new_pattern/g' path/to/file/to/modify.txt
           cd scripts/package-build/linux-kernel
           ./build.py
-          cd ../../../package
+          cd ../../../packages
           ln -s ../scripts/package-build/linux-kernel/*.deb ./
           ls -la
 
