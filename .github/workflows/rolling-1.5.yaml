@@ -55,7 +55,7 @@ env:
 
 jobs:
   build_generic_iso:
-    runs-on: self-hosted
+    runs-on: ubuntu-24.04
     if: github.repository == 'bryan824/build-vyos'
     permissions:
       contents: write
