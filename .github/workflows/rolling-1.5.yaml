@@ -56,7 +56,7 @@ env:
 jobs:
   build_generic_iso:
     runs-on: self-hosted
-    if: github.repository == 'vyos/vyos-nightly-build'
+    if: github.repository == 'bryan824/build-vyos'
     permissions:
       contents: write
     container:
@@ -475,7 +475,7 @@ jobs:
           json: |
             [
               {
-                "url": "https://github.com/vyos/vyos-nightly-build/releases/download/${{ needs.build_generic_iso.outputs.build_version }}/${{ needs.build_generic_iso.outputs.generic_image_iso }}",
+                "url": "https://github.com/bryan824/build-vyos/releases/download/${{ needs.build_generic_iso.outputs.build_version }}/${{ needs.build_generic_iso.outputs.generic_image_iso }}",
                 "version": "${{ needs.build_generic_iso.outputs.build_version }}",
                 "timestamp": "${{ needs.build_generic_iso.outputs.TIMESTAMP }}"
               }
